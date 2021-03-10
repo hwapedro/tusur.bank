@@ -10,6 +10,7 @@ import { ThemeProvider } from "@material-ui/core/styles";
 
 import { Banks } from "./banks";
 import { Calc } from "./calc";
+import { User } from "./user";
 import { Login } from "./login";
 import { theme } from "../assets/theme/theme";
 
@@ -36,20 +37,23 @@ export const App = () => {
   if (!state.user) {
     return (
       <Wrapper>
-        <Route path="/login">
+        <Route exact path="/">
           <Login />
         </Route>
-        <Redirect to="/login" />
+        <Redirect to="/" />
       </Wrapper>
     );
   }
 
   return (
     <Wrapper>
-      <Route path="/banks">
+      <Route exact path="/">
         <Banks />
       </Route>
-      <Route path="/calc/:bankId">
+      <Route exact path="/user">
+        <User />
+      </Route>
+      <Route exact path="/calc/:bankId">
         <Calc />
       </Route>
     </Wrapper>

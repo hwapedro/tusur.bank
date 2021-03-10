@@ -6260,6 +6260,41 @@
 			)] );
 		},
 
+		// listing/1
+		"listing/1": function( thread, point, atom ) {
+			var indicator = atom.args[0];
+			if(pl.type.is_variable(indicator)) {
+				thread.throw_error( pl.error.instantiation( atom.indicator ) );
+			} else if(!pl.type.is_predicate_indicator(indicator)) {
+				thread.throw_error( pl.error.type( "predicate_indicator", indicator, atom.indicator ) );
+			} else {
+				var from_module = atom.from_module ? atom.from_module : "user";
+				var rules = {};
+				if(pl.type.is_module(thread.session.modules[from_module])) {
+					rules = thread.session.modules[from_module].rules;
+				}
+				var str = "";
+				var str_indicator = indicator.args[0].id + "/" + indicator.args[1].value;
+				if(rules.hasOwnProperty(str_indicator)) {
+					var predicate = rules[str_indicator];
+					if(predicate instanceof Array) {
+						for(var i = 0; i < predicate.length; i++)
+							str += predicate[i].toString( {session: thread.session} ) + "\n";
+					} else {
+						str += "/*\n" + predicate.toString() + "\n*/";
+					}
+					str += "\n";
+				}
+				thread.prepend( [new State(
+					point.goal.replace(new Term("write", [new Term(str, [])])),
+					point.substitution,
+					point
+				)] );
+			}
+		},
+
+
+
 		// listing/2
 		"listing/2": function( thread, point, atom) {
 			var indicator = atom.args[0];

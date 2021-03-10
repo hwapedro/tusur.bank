@@ -1,3 +1,5 @@
+:- dynamic(history/7).
+
 bank(sberbank,'СБЕР БАНК','ПАО «Сбербанк» — российский финансовый конгломерат, крупнейший транснациональный банк России, Центральной и Восточной Европы.', '#21a038').
 bank(vtb,'ВТБ','Банк ВТБ — российский универсальный коммерческий банк c государст- венным участием. Банк ВТБ является головной структурой Группы ВТБ.', '#092972').
 
@@ -36,15 +38,16 @@ createList([[M,Y,_]|TAIL],MILLION,YEAR,RESULT):-
 
 round(X,Y,D) :- DEG is 10^D, Z is X * DEG, Y is round(Z) / DEG.
 
-getmonthamount(AMOUNT,RATE,MONTHS,X):- 
+getmonthamount(AMOUNT,RATE,MONTHS,X,Y):- 
     round((RATE/1200), R, 5),
     TEMP is (R+1)^MONTHS,
-    X is round(AMOUNT*((R*TEMP)/(TEMP-1))).
+    X is round(AMOUNT*((R*TEMP)/(TEMP-1))),
+    Y is X*MONTHS.
 
 getAllmonthamount([], [], _, _).
 getAllmonthamount([ID|FTAIL], [RESULT|STAIL], AMOUNT, MONTHS):-
     credit(_,RATE,_,_,ID),
-    getmonthamount(AMOUNT, RATE, MONTHS, RESULT),
+    getmonthamount(AMOUNT, RATE, MONTHS, RESULT, _),
     getAllmonthamount(FTAIL, STAIL, AMOUNT,  MONTHS).
 
 customAppent([], [], []).
@@ -73,5 +76,24 @@ getOrderAmountList(BANKID,AMOUNT,MONTHS,RESULT):-
   
     customAppent(IDLIST, AMOUNTRESULT, LIST),
     bubblesort(LIST, RESULT).
-   
+
+list_length([], '0').
+list_length(Xs,L) :- list_length(Xs,0,L).
+list_length([],L,L ) .
+list_length( [_|Xs] , T , L ) :-
+  T1 is T+1 ,
+  list_length(Xs,T1,L).
+
+creditTake(Q,W,E,R,T,Y):-
+    findall(INDEX, history(_,_,_,_,_,_,INDEX), LIST),
+    list_length(LIST, L),
+    assertz(history(Q,W,E,R,T,Y,L)), 
+    open('./prolog/database/history.pl',write,Out),
+    listing(history/7, Out),
+    close(Out).  
     
+
+getHistoryLenght(U, L):-
+    findall(INDEX, history(U,_,_,_,_,_,INDEX), LIST),
+    list_length(LIST, L).
+

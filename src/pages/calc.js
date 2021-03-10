@@ -10,13 +10,13 @@ import {
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import Select from "react-select";
-
-import { useParams } from "react-router-dom";
+import { useParams, useHistory } from "react-router-dom";
 import { makeStyles } from "@material-ui/core/styles";
 
 import { instance } from "../utils/api/api";
 import { Title } from "../common/title";
 import { Logo } from "../common/logo";
+import { ContextState } from "../pages/_app";
 
 const LOGIN_SCHEMA = Yup.object().shape({
   amount: Yup.number()
@@ -29,11 +29,14 @@ const LOGIN_SCHEMA = Yup.object().shape({
 
 export const Calc = () => {
   const classes = useStyles();
+  const history = useHistory();
+  const { state } = React.useContext(ContextState);
   const { bankId } = useParams();
   const [credits, setCredits] = React.useState(null);
   const [bankColor, setBankColor] = React.useState(null);
   const [selectedCredit, setSelectedCredit] = React.useState(null);
   const [monthAmount, setMonthAmount] = React.useState(null);
+  const [fullCreditAmount, setFullCreditAmount] = React.useState(null);
   const [alternativeCredits, setAlternativeCredits] = React.useState(null);
 
   const formik = useFormik({
@@ -77,6 +80,7 @@ export const Calc = () => {
           `calc?amount=${formik.values.amount}&rate=${selectedCredit.value.rate}&month=${formik.values.year}`
         )
         .then(({ data }) => {
+          setFullCreditAmount(data.credit);
           setMonthAmount(Math.round(data.monthamount));
         });
 
@@ -134,6 +138,7 @@ export const Calc = () => {
             setSelectedCredit(option);
             setAlternativeCredits(null);
             setMonthAmount(null);
+            setFullCreditAmount(null);
           }}
           styles={customStyles}
           options={options}
@@ -247,6 +252,16 @@ export const Calc = () => {
             <>
               <Box className={classes.monthAmountTitle}>
                 <Typography className={classes.monthAmountTitle}>
+                  Конечная сумма кредита, ₽
+                </Typography>
+              </Box>
+              <Box className={classes.monthAmount}>
+                <Typography className={classes.monthAmount}>
+                  {fullCreditAmount}
+                </Typography>
+              </Box>
+              <Box className={classes.monthAmountTitle}>
+                <Typography className={classes.monthAmountTitle}>
                   Ежемесячный платеж, ₽
                 </Typography>
               </Box>
@@ -256,7 +271,22 @@ export const Calc = () => {
                 </Typography>
               </Box>
               <Box className={classes.buttonOffer}>
-                <Button className={classes.buttonOffer} type="submit">
+                <Button
+                  className={classes.buttonOffer}
+                  type="submit"
+                  onClick={() =>
+                    instance
+                      .post(`takeCredit`, {
+                        username: state.user.username,
+                        creditId: selectedCredit.value.creditId,
+                        fullCreditAmount,
+                        monthAmount,
+                        months: formik.values.year,
+                        date: new Date().valueOf(),
+                      })
+                      .then(() => history.push("/user"))
+                  }
+                >
                   Оформить
                 </Button>
               </Box>
@@ -390,6 +420,7 @@ const useStyles = makeStyles({
   },
   monthAmount: { fontSize: "30px" },
   monthAmountTitle: {
+    marginTop: "10px",
     fontSize: "20px",
   },
   buttonOffer: {

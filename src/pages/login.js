@@ -14,7 +14,6 @@ const LOGIN_SCHEMA = Yup.object().shape({
 });
 
 export const Login = () => {
-  const history = useHistory();
   const context = React.useContext(ContextState);
   const classes = useStyles();
 
