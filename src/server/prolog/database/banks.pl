@@ -44,26 +44,26 @@ getmonthamount(AMOUNT,RATE,MONTHS,X,Y):-
     X is round(AMOUNT*((R*TEMP)/(TEMP-1))),
     Y is X*MONTHS.
 
-getAllmonthamount([], [], _, _).
-getAllmonthamount([ID|FTAIL], [RESULT|STAIL], AMOUNT, MONTHS):-
+getAllmonthamount([], [], [], _, _).
+getAllmonthamount([ID|FTAIL], [RESULT|STAIL], [AMOUNTS|AMOUNTSTAIL], AMOUNT, MONTHS):-
     credit(_,RATE,_,_,ID),
-    getmonthamount(AMOUNT, RATE, MONTHS, RESULT, _),
-    getAllmonthamount(FTAIL, STAIL, AMOUNT,  MONTHS).
+    getmonthamount(AMOUNT, RATE, MONTHS, RESULT, AMOUNTS),
+    getAllmonthamount(FTAIL, STAIL, AMOUNTSTAIL, AMOUNT,  MONTHS).
 
-customAppent([], [], []).
-customAppent([LIST1|TAIL1], [LIST2|TAIL2], [[LIST1, LIST2]|TAIL3]):-
-    customAppent(TAIL1, TAIL2, TAIL3).
+customAppent([], [], [], []).
+customAppent([LIST1|TAIL1], [LIST2|TAIL2], [LIST3|TAIL3], [[LIST1, LIST2, LIST3]|TAIL4]):-
+    customAppent(TAIL1, TAIL2, TAIL3, TAIL4).
 
 bubblesort([], []).          
 bubblesort([H], [H]).       
-bubblesort([[H1,H2]|T], S) :-      
-    bubblesort(T, [[M1,M2]|R]),    
+bubblesort([[H1,H2,H3]|T], S) :-      
+    bubblesort(T, [[M1,M2,M3]|R]),    
     (                                 
        H2 =< M2,                        
-             S = [[H1,H2],[M1,M2]|R]              
+             S = [[H1,H2,H3],[M1,M2,M3]|R]              
     ;                                 
        H2 > M2,                         
-             bubblesort([[M1,M2],[H1,H2]|R], S)  
+             bubblesort([[M1,M2,M3],[H1,H2,H3]|R], S)  
     ).
 
 
@@ -72,9 +72,8 @@ getOrderAmountList(BANKID,AMOUNT,MONTHS,RESULT):-
     YEAR is MONTHS/12,
     findall([CYEAR,CAMOUNT,ID], credit(BANKID, _,CAMOUNT,CYEAR,ID), CREDITLIST),
     createList(CREDITLIST, MILLION, YEAR, IDLIST),
-    getAllmonthamount(IDLIST, AMOUNTRESULT, AMOUNT, MONTHS),
-  
-    customAppent(IDLIST, AMOUNTRESULT, LIST),
+    getAllmonthamount(IDLIST, MONTHAMOUNTRESULT, AMOUNTRESULT, AMOUNT, MONTHS),
+    customAppent(IDLIST, MONTHAMOUNTRESULT, AMOUNTRESULT, LIST),
     bubblesort(LIST, RESULT).
 
 list_length([], '0').
@@ -109,7 +108,6 @@ closeCredit(INDEX):-
 repaymentCredit(INDEX,RAMOUNT,NEWAMOUNT,NEWMONTHSAMOUNT):-
     history(Q,CREDITID,AMOUNT,E,MONTHS,T,INDEX,_,_),
     NEWAMOUNT is AMOUNT - RAMOUNT,
-    write(NEWAMOUNT), write(' '),
     NEWAMOUNT \== 0,
     NEWMONTHSAMOUNT is round(NEWAMOUNT/MONTHS),
     retract(history(_,_,_,_,_,_,INDEX,_,_)), 
