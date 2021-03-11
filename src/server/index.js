@@ -13,6 +13,8 @@ const session = pl.create();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+session.consult(path.join(__dirname, "./prolog/database/banks.pl"));
+session.consult(path.join(__dirname, "./prolog/database/history.pl"));
 
 const answer_obj = function (answer) {
   if (pl.type.is_error(answer)) throw answer.args[0].toString();
@@ -71,29 +73,26 @@ app.post("/login", async (req, res, next) => {
 
 app.get("/banks", async (req, res) => {
   let banks = [];
-  session.consult(path.join(__dirname, "./prolog/database/banks.pl"), {
+
+  session.query("bank(BANKID,NAME,TEXT,_), getmincredit(BANKID,RATE).", {
     success: () => {
-      session.query("bank(BANKID,NAME,TEXT,_), getmincredit(BANKID,RATE).", {
-        success: () => {
-          session.answers(
-            (element) => {
-              const result = answer_obj(element);
-              if (!!result && result.BANKID) {
-                banks = [
-                  ...banks,
-                  {
-                    id: result.BANKID,
-                    rate: result.RATE,
-                    text: result.TEXT,
-                    name: result.NAME,
-                  },
-                ];
-              }
-            },
-            () => res.send({ banks })
-          );
+      session.answers(
+        (element) => {
+          const result = answer_obj(element);
+          if (!!result && result.BANKID) {
+            banks = [
+              ...banks,
+              {
+                id: result.BANKID,
+                rate: result.RATE,
+                text: result.TEXT,
+                name: result.NAME,
+              },
+            ];
+          }
         },
-      });
+        () => res.send({ banks })
+      );
     },
   });
 });
@@ -102,69 +101,64 @@ app.get("/banks/credits", async (req, res) => {
   const { query } = req;
   let credits = [];
   let bankColor = "";
-  session.consult(path.join(__dirname, "./prolog/database/banks.pl"), {
-    success: () => {
-      session.query(
-        `bank(${query.bank},_,_,BANKCOLOR),credit(${query.bank},CREDITRATE,CREDITYEAR, CREDITAMOUNT, CREDITID).`,
-        {
-          success: () => {
-            session.answers(
-              (element) => {
-                const result = answer_obj(element);
-                if (!!result && result.CREDITRATE) {
-                  bankColor = result.BANKCOLOR;
-                  credits = [
-                    ...credits,
-                    {
-                      id: query.bank,
-                      creditId: result.CREDITID,
-                      rate: result.CREDITRATE,
-                      year: result.CREDITYEAR,
-                      amount: result.CREDITAMOUNT,
-                    },
-                  ];
-                }
-              },
-              () => res.send({ credits, bankColor })
-            );
+  session.query(
+    `bank(${query.bank},_,_,BANKCOLOR),credit(${query.bank},CREDITRATE,CREDITYEAR, CREDITAMOUNT, CREDITID).`,
+    {
+      success: () => {
+        session.answers(
+          (element) => {
+            const result = answer_obj(element);
+            if (!!result && result.CREDITRATE) {
+              bankColor = result.BANKCOLOR;
+              credits = [
+                ...credits,
+                {
+                  id: query.bank,
+                  creditId: result.CREDITID,
+                  rate: result.CREDITRATE,
+                  year: result.CREDITYEAR,
+                  amount: result.CREDITAMOUNT,
+                },
+              ];
+            }
           },
-        }
-      );
-    },
-  });
+          () => res.send({ credits, bankColor })
+        );
+      },
+    }
+  );
 });
 
 app.get("/calc", async (req, res) => {
   const { query } = req;
   const { amount, rate, month } = query;
 
-  session.consult(path.join(__dirname, "./prolog/database/banks.pl"), {
-    success: () => {
-      session.query(
-        `getmonthamount(${amount}, ${rate}, ${month}, MONTHAMOUNT, CREDITPROCENTAMOUNT).`,
-        {
-          success: () => {
-            session.answer({
-              success: (answer) => {
-                console.log("@", answer);
-                const result = answer_obj(answer);
-                if (!!result && result.MONTHAMOUNT) {
-                  res.send({
-                    monthamount: result.MONTHAMOUNT,
-                    credit: result.CREDITPROCENTAMOUNT,
-                  });
-                }
-              },
-              fail: () => {
-                res.status(404);
-                res.send({});
-              },
-            });
+  session.query(
+    `getmonthamount(${amount}, ${rate}, ${month}, MONTHAMOUNT, CREDITPROCENTAMOUNT).`,
+    {
+      success: () => {
+        session.answer({
+          success: (answer) => {
+            const result = answer_obj(answer);
+            if (!!result && result.MONTHAMOUNT) {
+              res.send({
+                monthamount: result.MONTHAMOUNT,
+                credit: result.CREDITPROCENTAMOUNT,
+              });
+            }
           },
-        }
-      );
-    },
-  });
+          error: (err) => {
+            res.status(404);
+            res.send(err);
+          },
+          fail: () => {
+            res.status(404);
+            res.send({});
+          },
+        });
+      },
+    }
+  );
 });
 
 app.get("/creditList", async (req, res) => {
@@ -212,32 +206,28 @@ app.post("/takeCredit", async (req, res, next) => {
     date,
   } = body;
 
-  session.consult(path.join(__dirname, "./prolog/database/banks.pl"), {
-    success: () => {
-      session.query(
-        `creditTake(${username},${creditId},${fullCreditAmount},${monthAmount},${months},'${date}').`,
-        {
-          success: () => {
-            session.answer({
-              success: (answer) => {
-                res.send({ answer });
-              },
-              error: function (err) {
-                res.send({ err: err.args });
-              },
-              fail: () => {
-                res.status(404);
-                res.send({});
-              },
-            });
+  session.query(
+    `creditTake(${username},${creditId},${fullCreditAmount},${monthAmount},${months},'${date}').`,
+    {
+      success: () => {
+        session.answer({
+          success: (answer) => {
+            res.send({ answer });
           },
-          error: (err) => {
-            console.log("@@@@", err);
+          error: function (err) {
+            res.send({ err: err.args });
           },
-        }
-      );
-    },
-  });
+          fail: () => {
+            res.status(404);
+            res.send({});
+          },
+        });
+      },
+      error: (err) => {
+        console.log("@@@@", err);
+      },
+    }
+  );
 });
 
 app.get("/getCredits", async (req, res, next) => {
@@ -246,58 +236,89 @@ app.get("/getCredits", async (req, res, next) => {
   let credits = [];
   let length = 0;
 
-  session.consult(path.join(__dirname, "./prolog/database/banks.pl"), {
-    success: () => {
-      session.query(
-        `history(${username},CREDIT_ID,FULL_AMOUNT,MONTH_AMOUNT,MONTHS_,CREDIT_DATE,INDEX_HISTORY).`,
-        {
-          success: () => {
-            session.answers(
-              (element) => {
-                const result = answer_obj(element);
-                if (result.CREDIT_ID) {
-                  length = result.HISTORY_LENGHT;
-                  credits = [...credits, result];
-                }
-              },
-              () => res.send({ credits, length })
-            );
+  session.query(
+    `history(${username},CREDIT_ID,FULL_AMOUNT,MONTH_AMOUNT,MONTHS_,CREDIT_DATE,INDEX_HISTORY,ISCLOSE,USERAMOUNT).`,
+    {
+      success: () => {
+        session.answers(
+          (element) => {
+            const result = answer_obj(element);
+            if (result.CREDIT_ID) {
+              length = result.HISTORY_LENGHT;
+              credits = [...credits, result];
+            }
           },
-        }
-      );
+          () => res.send({ credits, length })
+        );
+      },
+    }
+  );
+});
+
+app.post("/closeCredit", async (req, res, next) => {
+  const { body } = req;
+  const { index } = body;
+
+  session.query(`closeCredit(${index}).`, {
+    success: () => {
+      session.answer({
+        success: () => {
+          res.send({ success: true });
+        },
+        fail: () => {
+          res.status(404);
+          res.send();
+        },
+        error: (err) => {
+          res.status(404);
+          res.send({ err });
+        },
+      });
     },
-    error: (err) => res.send({ err }),
   });
+});
+
+app.post("/repaymentCredit", async (req, res, next) => {
+  const { body } = req;
+  const { index, amount } = body;
+
+  session.query(
+    `repaymentCredit(${index}, ${amount}, NEWAMOUNT,NEWMONTHSAMOUNT).`,
+    {
+      success: () => {
+        session.answer({
+          success: (answer) => {
+            const result = answer_obj(answer);
+            res.send({ result });
+          },
+          fail: () => {
+            res.status(404);
+            res.send();
+          },
+          error: (err) => {
+            res.status(404);
+            res.send({ err });
+          },
+        });
+      },
+    }
+  );
 });
 
 app.get("/getHistoryLenght", async (req, res, next) => {
   const { query } = req;
   const { username } = query;
 
-  session.consult(path.join(__dirname, "./prolog/database/banks.pl"), {
+  session.query(`getHistoryLenght(${username},HISTORY_LENGHT).`, {
     success: () => {
-      session.query(
-        `getHistoryLenght(${username},HISTORY_LENGHT).`,
-        {
-          success: () => {
-            session.answer({
-              success: (answer) => {
-                const result = answer_obj(answer);
-                if (!!result && result.HISTORY_LENGHT) {
-                  res.send({ historyLenght: result.HISTORY_LENGHT });
-                }
-              },
-              error: function (err) {
-                res.send({ err: err.args });
-              },
-              fail: () => {
-                res.status(404);
-                res.send({});
-              },
-            });
+      session.answer({
+        success: (answer) => {
+          const result = answer_obj(answer);
+          if (!!result && result.HISTORY_LENGHT) {
+            res.send({ historyLenght: result.HISTORY_LENGHT });
           }
-        }
-      );
+        },
+      });
     },
   });
 });

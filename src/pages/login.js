@@ -1,5 +1,4 @@
 import React from "react";
-import { useHistory } from "react-router-dom";
 import { Typography, Button, TextField, Box, Paper } from "@material-ui/core/";
 import { makeStyles } from "@material-ui/core/styles";
 import { useFormik } from "formik";
@@ -51,7 +50,7 @@ export const Login = () => {
         </Typography>
       </Box>
       <Paper className={classes.root}>
-        <form className={classes.formContraol} onSubmit={formik.handleSubmit}>
+        <form className={classes.formControl} onSubmit={formik.handleSubmit}>
           <TextField
             className={classes.textField}
             error={!!formik.errors.username}
@@ -90,7 +89,7 @@ const useStyles = makeStyles({
     cursor: "pointer",
     padding: "50px",
   },
-  formContraol: {
+  formControl: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",

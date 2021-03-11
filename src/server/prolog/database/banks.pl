@@ -1,4 +1,4 @@
-:- dynamic(history/7).
+:- dynamic(history/9).
 
 bank(sberbank,'СБЕР БАНК','ПАО «Сбербанк» — российский финансовый конгломерат, крупнейший транснациональный банк России, Центральной и Восточной Европы.', '#21a038').
 bank(vtb,'ВТБ','Банк ВТБ — российский универсальный коммерческий банк c государст- венным участием. Банк ВТБ является головной структурой Группы ВТБ.', '#092972').
@@ -84,16 +84,40 @@ list_length( [_|Xs] , T , L ) :-
   T1 is T+1 ,
   list_length(Xs,T1,L).
 
+getHistoryLenght(U, L):-
+    findall(INDEX, history(U,_,_,_,_,_,INDEX,0,_), LIST),
+    list_length(LIST, L).
+
 creditTake(Q,W,E,R,T,Y):-
-    findall(INDEX, history(_,_,_,_,_,_,INDEX), LIST),
-    list_length(LIST, L),
-    assertz(history(Q,W,E,R,T,Y,L)), 
+    findall(INDEX, history(_,_,_,_,_,_,INDEX,_,_), LIST),
+    list_length([1|LIST], L),
+    CREDITINDEX is L + 1,
+    assertz(history(Q,W,E,R,T,Y,CREDITINDEX,0,0)), 
     open('./prolog/database/history.pl',write,Out),
-    listing(history/7, Out),
+    listing(history/9, Out),
     close(Out).  
     
+closeCredit(INDEX):-
+    history(Q,W,AMOUNT,E,R,T,INDEX,_,USERAMOUNT),
+    FULLAMOUNT is AMOUNT + USERAMOUNT,
+    retract(history(_,_,_,_,_,_,INDEX,_,_)), 
+    assertz(history(Q,W,0,E,R,T,INDEX,1,FULLAMOUNT)), 
+    open('./prolog/database/history.pl',write,Out),
+    listing(history/9, Out),
+    close(Out).  
 
-getHistoryLenght(U, L):-
-    findall(INDEX, history(U,_,_,_,_,_,INDEX), LIST),
-    list_length(LIST, L).
+repaymentCredit(INDEX,RAMOUNT,NEWAMOUNT,NEWMONTHSAMOUNT):-
+    history(Q,CREDITID,AMOUNT,E,MONTHS,T,INDEX,_,_),
+    NEWAMOUNT is AMOUNT - RAMOUNT,
+    write(NEWAMOUNT), write(' '),
+    NEWAMOUNT \== 0,
+    NEWMONTHSAMOUNT is round(NEWAMOUNT/MONTHS),
+    retract(history(_,_,_,_,_,_,INDEX,_,_)), 
+    assertz(history(Q,CREDITID,NEWAMOUNT,NEWMONTHSAMOUNT,MONTHS,T,INDEX,0,RAMOUNT)), 
+    open('./prolog/database/history.pl',write,Out),
+    listing(history/9, Out),
+    close(Out);
+    closeCredit(INDEX).
+
+
 

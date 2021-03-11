@@ -47,7 +47,7 @@ export const Calc = () => {
     validateOnChange: false,
     validateOnBlur: true,
     validationSchema: LOGIN_SCHEMA,
-    onSubmit: (values) => {
+    onSubmit: async (values) => {
       console.log(
         "values.amount > selectedCredit.value.amount * 1000000",
         values.amount > selectedCredit.value.amount * 1000000
@@ -75,21 +75,21 @@ export const Calc = () => {
         return;
       }
 
-      instance
+      await instance
+        .get(
+          `creditList?id=${bankId}&amount=${formik.values.amount}&month=${formik.values.year}`
+        )
+        .then(({ data }) => {
+          setAlternativeCredits(data.alternative);
+        });
+
+      await instance
         .get(
           `calc?amount=${formik.values.amount}&rate=${selectedCredit.value.rate}&month=${formik.values.year}`
         )
         .then(({ data }) => {
           setFullCreditAmount(data.credit);
           setMonthAmount(Math.round(data.monthamount));
-        });
-
-      instance
-        .get(
-          `creditList?id=${bankId}&amount=${formik.values.amount}&month=${formik.values.year}`
-        )
-        .then(({ data }) => {
-          setAlternativeCredits(data.alternative);
         });
     },
   });
@@ -274,18 +274,30 @@ export const Calc = () => {
                 <Button
                   className={classes.buttonOffer}
                   type="submit"
-                  onClick={() =>
-                    instance
-                      .post(`takeCredit`, {
-                        username: state.user.username,
-                        creditId: selectedCredit.value.creditId,
-                        fullCreditAmount,
-                        monthAmount,
-                        months: formik.values.year,
-                        date: new Date().valueOf(),
-                      })
-                      .then(() => history.push("/user"))
-                  }
+                  onClick={async () => {
+                    await instance
+                      .get(`getHistoryLenght?username=${state.user.username}`)
+                      .then(({ data }) => {
+                        if (+data.historyLenght < 2) {
+                          instance
+                            .post(`takeCredit`, {
+                              username: state.user.username,
+                              creditId: selectedCredit.value.creditId,
+                              fullCreditAmount,
+                              monthAmount,
+                              months: formik.values.year,
+                              date: new Date().valueOf(),
+                            })
+                            .then(() => history.push("/user"));
+                            return
+                        }
+
+                        formik.setErrors({
+                          amount: " ",
+                          year: `Отказано в кредите, неоплаченных кредитов ${data.historyLenght}`,
+                        });
+                      });
+                  }}
                 >
                   Оформить
                 </Button>
@@ -322,12 +334,12 @@ export const Calc = () => {
                   <Grid item xs={3}>
                     <Box className={classes.tabContainer}>
                       <Typography className={classes.tabTitle}>
-                        Сумма кредита
+                        Сумма кредита, ₽
                       </Typography>
                     </Box>
                     <Box className={classes.tabContainer}>
                       <Typography className={classes.tabText}>
-                        до {credit.amount} млн ₽
+                        до {credit.amount} млн 
                       </Typography>
                     </Box>
                   </Grid>
